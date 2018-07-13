@@ -8,7 +8,7 @@ import (
 type ICredentialInfo interface {
 	AppID() string
 	ValidTime() time.Time
-	Encrypted() ([]byte, error)
+	Encrypted() []byte
 	Scope() string
 }
 

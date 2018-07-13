@@ -39,10 +39,7 @@ func NewDefaultAuth(label []byte, validDuration time.Duration, pgHost string, ta
 func (a *Auth) IsCredentialValid(info ICredentialInfo, validScopes []string) (error) {
 	appID := info.AppID()
 	validTime := info.ValidTime()
-	encrypted, err := info.Encrypted()
-	if err != nil {
-		return err
-	}
+	encrypted := info.Encrypted()
 	scope := info.Scope()
 
 	if err := a.validator.Validate(appID, validTime, scope, validScopes); err != nil {

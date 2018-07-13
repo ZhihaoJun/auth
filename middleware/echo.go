@@ -12,49 +12,73 @@ import (
 )
 
 type echoTokenInfo struct {
-	AppIDField string `json:"appID"`
-	TimestampField int64 `json:"validTime"`
-	EncryptedField string `json:"encrypted"`
-	ScopeField string `json:"scope"`
+	appID string
+	timestamp int64
+	encrypted []byte
+	scope string
+}
+
+func newEchoTokenInfo(appID string, timestamp int64, encrypted []byte, scope string) *echoTokenInfo {
+	return &echoTokenInfo{
+		appID,
+		timestamp,
+		encrypted,
+		scope,
+	}
 }
 
 func (i *echoTokenInfo) AppID() string {
-	return i.AppIDField
+	return i.appID
 }
 
 func (i *echoTokenInfo) ValidTime() time.Time {
-	return time.Unix(i.TimestampField, 0)
+	return time.Unix(i.timestamp, 0)
 }
 
-func (i *echoTokenInfo) Encrypted() ([]byte, error) {
-	return hex.DecodeString(i.EncryptedField)
+func (i *echoTokenInfo) Encrypted() []byte {
+	return i.encrypted
 }
 
 func (i *echoTokenInfo) Scope() string {
-	return i.ScopeField
+	return i.scope
 }
 
-func NewEchoMiddleware(auth *auth.Auth, headerName string, validScopes []string) echo.MiddlewareFunc {
+func NewEchoMiddleware(auth *auth.Auth, header string, validScopes []string) echo.MiddlewareFunc {
+	type u struct {
+		AppID string `json:"appID"`
+		Timestamp int64 `json:"validTime"`
+		Encrypted string `json:"encrypted"`
+		Scope string `json:"scope"`
+	}
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(ctx echo.Context) error {
-			token := ctx.Request().Header.Get(headerName)
+			token := ctx.Request().Header.Get(header)
 			jsonStr, err := base64.StdEncoding.DecodeString(token)
 			if err != nil {
 				return ctx.JSON(http.StatusForbidden, map[string]interface{}{
 					"error": "token:invalid",
-					"msg": fmt.Sprintf("%s is not a valid base64 format", headerName),
+					"msg": fmt.Sprintf("%s is not a valid base64 format", header),
 				})
 			}
 
-			info := &echoTokenInfo{}
+			info := &u{}
 			if err := json.Unmarshal(jsonStr, &info); err != nil {
 				return ctx.JSON(http.StatusForbidden, map[string]interface{}{
 					"error": "token:invalid",
-					"msg": fmt.Sprintf("%s is not a valid json format", headerName),
+					"msg": fmt.Sprintf("%s is not a valid json format", header),
 				})
 			}
 
-			if err := auth.IsCredentialValid(info, validScopes); err != nil {
+			encrypted, err := hex.DecodeString(info.Encrypted)
+			if err != nil {
+				return ctx.JSON(http.StatusForbidden, map[string]interface{}{
+					"error": "token:invalid",
+					"msg": fmt.Sprintf("%s has a invalid encrypted field", header),
+				})
+			}
+			tokenInfo := newEchoTokenInfo(info.AppID, info.Timestamp, encrypted, info.Scope)
+
+			if err := auth.IsCredentialValid(tokenInfo, validScopes); err != nil {
 				return ctx.JSON(http.StatusForbidden, map[string]interface{}{
 					"error": "token:invalid",
 					"msg": err.Error(),
