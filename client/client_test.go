@@ -8,6 +8,7 @@ import (
 	"time"
 	"fmt"
 	"encoding/json"
+	"encoding/base64"
 )
 
 type tokenInfo struct {
@@ -59,6 +60,10 @@ func TestClientGenerateToken(t *testing.T) {
 	fmt.Println(len(token))
 	fmt.Println(string(token))
 
+	base64DecodedLen := base64.StdEncoding.DecodedLen(len(token))
+	base64Decoded := make([]byte, base64DecodedLen)
+	base64.StdEncoding.Decode(base64Decoded, token)
+
 	type out struct {
 		AppID string `json:"appID"`
 		ValidTime int64 `json:"validTime"`
@@ -67,7 +72,7 @@ func TestClientGenerateToken(t *testing.T) {
 	}
 	info := out{}
 
-	if err := json.Unmarshal(token, &info); err != nil {
+	if err := json.Unmarshal(base64Decoded, &info); err != nil {
 		t.Error(err)
 	}
 	fmt.Printf("%v\n", info)

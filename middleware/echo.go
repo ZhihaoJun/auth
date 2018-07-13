@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"encoding/json"
 	"time"
-	"encoding/hex"
 )
 
 type echoTokenInfo struct {
@@ -47,7 +46,7 @@ func NewEchoMiddleware(auth *auth.Auth, header string, validScopes []string) ech
 	type u struct {
 		AppID string `json:"appID"`
 		Timestamp int64 `json:"validTime"`
-		Encrypted string `json:"encrypted"`
+		Encrypted []byte `json:"encrypted"`
 		Scope string `json:"scope"`
 	}
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -69,15 +68,7 @@ func NewEchoMiddleware(auth *auth.Auth, header string, validScopes []string) ech
 				})
 			}
 
-			encrypted, err := hex.DecodeString(info.Encrypted)
-			if err != nil {
-				return ctx.JSON(http.StatusForbidden, map[string]interface{}{
-					"error": "token:invalid",
-					"msg": fmt.Sprintf("%s has a invalid encrypted field", header),
-				})
-			}
-			tokenInfo := newEchoTokenInfo(info.AppID, info.Timestamp, encrypted, info.Scope)
-
+			tokenInfo := newEchoTokenInfo(info.AppID, info.Timestamp, info.Encrypted, info.Scope)
 			if err := auth.IsCredentialValid(tokenInfo, validScopes); err != nil {
 				return ctx.JSON(http.StatusForbidden, map[string]interface{}{
 					"error": "token:invalid",

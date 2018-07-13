@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"crypto/rand"
 	"encoding/json"
+	"encoding/base64"
 )
 
 type Client struct {
@@ -59,9 +60,21 @@ func (c *Client) GenerateToken(scope string) ([]byte, error) {
 		Encrypted: encrypted,
 	}
 
-	encoded, err := json.Marshal(o)
+	jsonEncoded, err := json.Marshal(o)
 	if err != nil {
 		return nil, err
 	}
-	return encoded, nil
+
+	base64EncodedLen := base64.StdEncoding.EncodedLen(len(jsonEncoded))
+	base64Encoded := make([]byte, base64EncodedLen)
+	base64.StdEncoding.Encode(base64Encoded, jsonEncoded)
+	return base64Encoded, nil
+}
+
+func (c *Client) GenerateTokenString(scope string) (string, error) {
+	token, err := c.GenerateToken(scope)
+	if err != nil {
+		return "", nil
+	}
+	return string(token), nil
 }
